@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OTP Sender</title>
+  <title>OTP Sender - BikeWale</title>
   <style>
     body {
       font-family: system-ui, -apple-system, sans-serif;
-      max-width: 500px;
+      max-width: 520px;
       margin: 40px auto;
       padding: 20px;
       background: #f5f5f5;
@@ -19,16 +19,22 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
     h1 {
-      margin: 0 0 8px;
-      font-size: 1.4rem;
+      margin: 0 0 6px;
+      font-size: 1.35rem;
+    }
+    .sub {
+      color: #64748b;
+      margin: 0 0 20px;
+      font-size: 0.95rem;
     }
     .status {
       margin: 16px 0;
       padding: 12px;
       border-radius: 8px;
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       white-space: pre-wrap;
       word-break: break-all;
+      display: none;
     }
     .info { background: #e8f4fd; color: #0c4a6e; }
     .success { background: #dcfce7; color: #14532d; }
@@ -50,21 +56,32 @@
     button:hover:not(:disabled) {
       background: #1d4ed8;
     }
+    .number-box {
+      background: #f1f5f9;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-weight: 600;
+      font-size: 1.1rem;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Allen OTP Tester</h1>
-    <p style="color:#64748b; margin:0 0 20px;">Reads number from number.json and sends OTP</p>
+    <h1>BikeWale OTP Tester</h1>
+    <p class="sub">Reads number from number.json → sends OTP</p>
+
+    <div class="number-box" id="selectedNumber">Selected Number: —</div>
 
     <button id="btn" onclick="run()">Send OTP</button>
 
-    <div id="status" class="status info" style="display:none;"></div>
+    <div id="status" class="status"></div>
   </div>
 
   <script>
     const NUMBER_JSON_URL = 'https://quickmovies.github.io/api/number.json';
-    const OTP_API_URL = 'https://api.allen-live.in/api/v1/auth/sendOtp?center_id=&source=home-page-login';
+    const OTP_API_URL = 'https://www.bikewale.com/api/user/login/otp-request/';
 
     function log(msg, type = 'info') {
       const el = document.getElementById('status');
@@ -73,39 +90,34 @@
       el.textContent = msg;
     }
 
-    function generateDeviceId() {
-      return crypto.randomUUID() + '-' + crypto.randomUUID();
-    }
-
     async function sendOtp(number) {
       const payload = {
-        country_code: "91",
-        phone_number: String(number),
-        persona_type: "STUDENT",
-        otp_type: "SHARED_DEFAULT"
+        mobileNo: String(number),
+        sourceModule: 14
       };
 
       const res = await fetch(OTP_API_URL, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Origin': 'https://allen.in',
-          'Referer': 'https://allen.in/',
-          'User-Agent': 'Mozilla/5.0 (Linux; Android 15)',
-          'x-device-id': generateDeviceId(),
-          'x-client-type': 'mweb',
-          'x-referrer': 'https://allen.in/',
-          'x-requested-with': 'mark.via.gp'
+          'Content-Type': 'application/json;charset=UTF-8',
+          'Accept': '*/*',
+          'Origin': 'https://www.bikewale.com',
+          'Referer': 'https://www.bikewale.com/',
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 15; Infinix X6871 Build/AP3A.240905.015.A2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.8059.43 Mobile Safari/537.36',
+          'sec-ch-ua-platform': '"Android"',
+          'sec-ch-ua': '"Android WebView";v="155", "Chromium";v="155", "Not(A:Brand";v="24"',
+          'sec-ch-ua-mobile': '?1',
+          'x-requested-with': 'mark.via.gp',
+          'serverdomain': 'CarWale'
         },
         body: JSON.stringify(payload)
       });
 
       const text = await res.text();
       try {
-        return JSON.parse(text);
+        return { status: res.status, data: JSON.parse(text) };
       } catch {
-        return { raw: text };
+        return { status: res.status, raw: text };
       }
     }
 
@@ -131,11 +143,13 @@
 
         if (numbers.length === 0) {
           log('No numbers found in JSON', 'error');
+          document.getElementById('selectedNumber').textContent = 'Selected Number: —';
           btn.disabled = false;
           return;
         }
 
         const target = String(numbers[0]).trim();
+        document.getElementById('selectedNumber').textContent = 'Selected Number: ' + target;
 
         if (!/^\d{10}$/.test(target)) {
           log('Invalid number: ' + target, 'error');
@@ -146,10 +160,15 @@
         log(`Sending OTP to ${target} ...`);
 
         const result = await sendOtp(target);
-        log('Success!\n\n' + JSON.stringify(result, null, 2), 'success');
+
+        if (result.status >= 200 && result.status < 300) {
+          log('Success!\n\n' + JSON.stringify(result, null, 2), 'success');
+        } else {
+          log('Request failed (HTTP ' + result.status + ')\n\n' + JSON.stringify(result, null, 2), 'error');
+        }
 
       } catch (err) {
-        log('Error: ' + err.message, 'error');
+        log('Error: ' + err.message + '\n\n(Most common cause: CORS blocked by browser)', 'error');
       }
 
       btn.disabled = false;
