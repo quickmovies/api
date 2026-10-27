@@ -26,7 +26,7 @@ function sendOtp(number) {
 
     const payload = JSON.stringify({
       country_code: "91",
-      phone_number: number,
+      phone_number: String(number),
       persona_type: "STUDENT",
       otp_type: "SHARED_DEFAULT"
     });
@@ -68,15 +68,26 @@ function sendOtp(number) {
 (async () => {
   try {
     console.log('Fetching numbers...');
-    const numbers = await fetchJson(NUMBER_JSON_URL);
+    const data = await fetchJson(NUMBER_JSON_URL);
 
-    if (!Array.isArray(numbers) || numbers.length === 0) {
+    // Handle both formats: [7848753925] or [{ "number": "7848753925" }]
+    let numbers = [];
+    if (Array.isArray(data)) {
+      numbers = data.map(item => {
+        if (typeof item === 'object' && item !== null) {
+          return item.number || item;
+        }
+        return item;
+      });
+    }
+
+    if (numbers.length === 0) {
       console.log('No numbers found');
       return;
     }
 
     // Take only the first number
-    const target = String(numbers[0].number || numbers[0]).trim();
+    const target = String(numbers[0]).trim();
 
     if (!/^\d{10}$/.test(target)) {
       console.log('Invalid number:', target);
