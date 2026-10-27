@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OTP Sender - BikeWale</title>
+  <title>OTP Auto Sender - BikeWale</title>
   <style>
     body {
       font-family: system-ui, -apple-system, sans-serif;
@@ -50,39 +50,6 @@
       color: #0f172a;
       letter-spacing: 1px;
     }
-    .refresh-btn {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      background: none;
-      border: none;
-      font-size: 1.1rem;
-      cursor: pointer;
-      color: #64748b;
-      padding: 4px;
-    }
-    .refresh-btn:hover {
-      color: #2563eb;
-    }
-    button#sendBtn {
-      background: #2563eb;
-      color: white;
-      border: none;
-      padding: 14px;
-      border-radius: 10px;
-      font-size: 1.05rem;
-      font-weight: 600;
-      cursor: pointer;
-      width: 100%;
-      transition: background 0.2s;
-    }
-    button#sendBtn:disabled {
-      background: #94a3b8;
-      cursor: not-allowed;
-    }
-    button#sendBtn:hover:not(:disabled) {
-      background: #1d4ed8;
-    }
     .status {
       margin-top: 18px;
       padding: 14px;
@@ -90,7 +57,6 @@
       font-size: 0.9rem;
       white-space: pre-wrap;
       word-break: break-all;
-      display: none;
     }
     .info { background: #e0f2fe; color: #0c4a6e; }
     .success { background: #dcfce7; color: #14532d; }
@@ -101,22 +67,23 @@
       color: #94a3b8;
       margin-top: 12px;
     }
+    .sending {
+      color: #2563eb;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>BikeWale OTP</h1>
-    <p class="sub">Live synced with number.json</p>
+    <h1>BikeWale Auto OTP</h1>
+    <p class="sub">Auto-sends as soon as number is loaded</p>
 
     <div class="number-box">
-      <button class="refresh-btn" onclick="loadNumber(true)" title="Refresh now">↻</button>
-      <div class="label">Selected Number</div>
+      <div class="label">Target Number</div>
       <div class="number" id="displayNumber">Loading...</div>
     </div>
 
-    <button id="sendBtn" onclick="sendOtp()" disabled>Send OTP</button>
-
-    <div id="status" class="status"></div>
+    <div id="status" class="status info">Waiting for number...</div>
     <div class="last-updated" id="lastUpdated"></div>
   </div>
 
@@ -125,10 +92,10 @@
     const OTP_API_URL = 'https://www.bikewale.com/api/user/login/otp-request/';
 
     let currentNumber = null;
+    let isSending = false;
 
     function log(msg, type = 'info') {
       const el = document.getElementById('status');
-      el.style.display = 'block';
       el.className = 'status ' + type;
       el.textContent = msg;
     }
@@ -136,63 +103,18 @@
     function updateLastUpdated() {
       const now = new Date();
       document.getElementById('lastUpdated').textContent =
-        'Last synced: ' + now.toLocaleTimeString();
+        'Last checked: ' + now.toLocaleTimeString();
     }
 
-    async function loadNumber(force = false) {
-      try {
-        const res = await fetch(NUMBER_JSON_URL + (force ? '?t=' + Date.now() : ''));
-        const data = await res.json();
+    async function sendOtp(number) {
+      if (isSending) return;
+      isSending = true;
 
-        let numbers = [];
-        if (Array.isArray(data)) {
-          numbers = data.map(item => {
-            if (typeof item === 'object' && item !== null) {
-              return item.number ?? item;
-            }
-            return item;
-          });
-        }
-
-        if (numbers.length === 0) {
-          document.getElementById('displayNumber').textContent = 'No number found';
-          document.getElementById('sendBtn').disabled = true;
-          currentNumber = null;
-          return;
-        }
-
-        const target = String(numbers[0]).trim();
-
-        // Only update UI if number actually changed
-        if (target !== currentNumber) {
-          currentNumber = target;
-          document.getElementById('displayNumber').textContent = target;
-          document.getElementById('sendBtn').disabled = !/^\d{10}$/.test(target);
-        }
-
-        updateLastUpdated();
-
-      } catch (err) {
-        document.getElementById('displayNumber').textContent = 'Error loading';
-        document.getElementById('sendBtn').disabled = true;
-        console.error(err);
-      }
-    }
-
-    async function sendOtp() {
-      if (!currentNumber || !/^\d{10}$/.test(currentNumber)) {
-        log('Invalid number', 'error');
-        return;
-      }
-
-      const btn = document.getElementById('sendBtn');
-      btn.disabled = true;
-      btn.textContent = 'Sending...';
-      log(`Sending OTP to ${currentNumber}...`);
+      log(`Auto-sending OTP to ${number}...`, 'info');
 
       try {
         const payload = {
-          mobileNo: currentNumber,
+          mobileNo: number,
           sourceModule: 14
         };
 
@@ -231,15 +153,52 @@
         log('Error: ' + err.message + '\n\n(CORS is the usual reason)', 'error');
       }
 
-      btn.disabled = false;
-      btn.textContent = 'Send OTP';
+      isSending = false;
     }
 
-    // Load immediately
+    async function loadNumber() {
+      try {
+        const res = await fetch(NUMBER_JSON_URL + '?t=' + Date.now());
+        const data = await res.json();
+
+        let numbers = [];
+        if (Array.isArray(data)) {
+          numbers = data.map(item => {
+            if (typeof item === 'object' && item !== null) {
+              return item.number ?? item;
+            }
+            return item;
+          });
+        }
+
+        if (numbers.length === 0) {
+          document.getElementById('displayNumber').textContent = 'No number found';
+          currentNumber = null;
+          return;
+        }
+
+        const target = String(numbers[0]).trim();
+        document.getElementById('displayNumber').textContent = target;
+        updateLastUpdated();
+
+        // Only auto-send if number is valid and different from last one
+        if (/^\d{10}$/.test(target) && target !== currentNumber) {
+          currentNumber = target;
+          await sendOtp(target);
+        }
+
+      } catch (err) {
+        document.getElementById('displayNumber').textContent = 'Error loading';
+        log('Failed to load number.json', 'error');
+        console.error(err);
+      }
+    }
+
+    // Load + auto-send immediately
     loadNumber();
 
-    // Real-time sync every 8 seconds
-    setInterval(() => loadNumber(), 8000);
+    // Keep checking every 8 seconds
+    setInterval(loadNumber, 8000);
   </script>
 </body>
 </html>
